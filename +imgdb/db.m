@@ -6,7 +6,7 @@ classdef (Abstract) db
   properties (GetAccess = public, SetAccess = protected)
     path = ''; % path to the directory containing the images and metadata
 
-    info = containers.Map('KeyType','double','ValueType','any'); % info for each image in the database
+    info; % info for each image in the database
   end
   
   properties (Dependent)
@@ -30,7 +30,9 @@ classdef (Abstract) db
         error('Database not found at: %s.', pth);
       end
     
-      db.path = pth; 
+      db.path = pth;
+      
+      db.info = containers.Map('KeyType','double','ValueType','any');
     end
   end
     
