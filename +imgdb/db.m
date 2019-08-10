@@ -1,5 +1,5 @@
-classdef (Abstract) imgDb
-  % generic wrapper class for various natural image datasets
+classdef (Abstract) db
+  % Abstract 'database' wrapper for image datasets.
 
   % 2015-02-26 - Shaun L. Cloherty <s.cloherty@ieee.org>
   
@@ -25,7 +25,7 @@ classdef (Abstract) imgDb
   end
     
   methods
-    function db = imgDb(pth) % constructor
+    function db = db(pth) % constructor
       if ~exist(pth,'dir')
         error('Database not found at: %s.', pth);
       end

@@ -1,4 +1,4 @@
-classdef vanhateren < imgDb
+classdef vanhateren < imgdb.db
   % Wrapper around the van Hateren natural image dataset.
   %
   % See http://bethgelab.org/datasets/vanhateren/ for details.
@@ -8,7 +8,7 @@ classdef vanhateren < imgDb
   methods
     function db = vanhateren(pth,varargin) % constructor
       % call parent constructor
-      db = db@imgDb(pth,varargin{:});
+      db = db@imgdb.db(pth,varargin{:});
       
       % get list of all image files in the database
       files = rdir(fullfile(db.path,'**','imk*.im*')); % recursive!

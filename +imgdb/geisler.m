@@ -1,4 +1,4 @@
-classdef geisler < imgDb
+classdef geisler < imgdb.db
   % Wrapper around the UT natural image dataset(s).
   %
   % See http://natural-scenes.cps.utexas.edu/db.shtml for details.
@@ -12,23 +12,19 @@ classdef geisler < imgDb
   methods
     function db = geisler(pth,varargin) % constructor
       % call parent constructor
-      db = db@imgDb(pth,varargin{:});
+      db = db@imgdb.db(pth,varargin{:});
             
       % get list of all image (.ppm - portable pixmap) files in the database
       files = rdir(fullfile(db.path,'**','*.ppm')); % recursive!
 
-%       pat = ['.*', filesep, '.*_(?<imgId>\d+)\.ppm'];
-      pat = ['.*', filesep, '(?<imgId>\d+)\.ppm'];
-      
-      finfo = arrayfun(@(x) regexp(x.name,pat,'names'), files);
-      imgIds = arrayfun(@(x) str2num(x.imgId),finfo,'UniformOutput',true);
-      
+      [~,imgIds,~] = arrayfun(@(x) fileparts(x.name),files,'UniformOutput',false);
+
       [imgIds,~,imgIdx] = unique(imgIds); % sorted by image number/id
       
-      for idx = 1:length(imgIds)
-        key = imgIdx(idx); % unique key in db.files()
+      for ii = 1:length(imgIds)
+        key = imgIdx(ii); % unique key in db.info()
         
-        fname = files(idx).name; % full path to the .ppm file
+        fname = files(ii).name; % full path to the .ppm file
 
         img = struct('key',key,'ppm',fname,'meta',struct());
         
@@ -73,7 +69,7 @@ classdef geisler < imgDb
     
     function img = getImg(db,key,varargin)
       % Load image(s) for the given database key(s).
-      img = arrayfun(@(x) geisler.load(db.info(x),varargin{:}),key,'UniformOutput',false);
+      img = arrayfun(@(x) imgdb.geisler.load(db.info(x),varargin{:}),key,'UniformOutput',false);
       
       if numel(img) == 1
         img = cell2mat(img);
@@ -94,13 +90,13 @@ classdef geisler < imgDb
       
       % parse arguments
       p = inputParser();
-      p.addParameter('colorMode','lum',@(x) ismember(upper(x),geisler.colorModes)); % scalar (grayscale) image
+      p.addParameter('colorMode','lum',@(x) ismember(upper(x),imgdb.geisler.colorModes)); % scalar (grayscale) image
 
       p.parse(varargin{:});
       args = p.Results;
       %
 
-      colorMode = find(ismember(geisler.colorModes,upper(args.colorMode)));
+      colorMode = find(ismember(imgdb.geisler.colorModes,upper(args.colorMode)));
             
       for ii = 1:length(rec)
         fname = rec(ii).ppm; % full filename of the .ppm file
@@ -124,19 +120,19 @@ classdef geisler < imgDb
         T = eval(rec(ii).meta.Shutter_Speed); % <-- urgh, nasty!
 
         % convert to CIE XYZ, and from there to the requested colorspace
-        xyz = geisler.raw2xyz(raw,f,T);
+        xyz = imgdb.geisler.raw2xyz(raw,f,T);
         
         switch colorMode
           case 2 % XYZ
             img{ii} = xyz;
           case 3 % xyY (aka xyL)
-%             img{ii} = geisler.raw2xyy(raw,f,T);
-            img{ii} = geisler.xyz2xyy(xyz);
+%             img{ii} = imgdb.geisler.raw2xyy(raw,f,T);
+            img{ii} = imgdb.geisler.xyz2xyy(xyz);
           case 4 % lum
             img{ii} = xyz(:,:,2); % Y in XYZ is luminance
           case 5 % RGB (aka sRGB)
-%             img{ii} = geisler.raw2rgb(raw,f,T);
-            img{ii} = geisler.xyz2rgb(xyz);
+%             img{ii} = imgdb.geisler.raw2rgb(raw,f,T);
+            img{ii} = imgdb.geisler.xyz2rgb(xyz);
           otherwise
             error('Unrecognized color mode %s.');
         end
@@ -175,9 +171,9 @@ classdef geisler < imgDb
     
     function xyY = raw2xyy(raw,f,T)
       % converts the raw RGB values from the database to CIE xyY (aka xyL).
-      xyz = geisler.raw2xyz(raw,f,T);
+      xyz = imgdb.geisler.raw2xyz(raw,f,T);
       
-      xyY = geisler.xyz2xyy(xyz);
+      xyY = imgdb.geisler.xyz2xyy(xyz);
     end
     
     function xyY = xyz2xyy(xyz)
@@ -193,9 +189,9 @@ classdef geisler < imgDb
     
     function rgb = raw2rgb(raw,f,T)
       % convert the raw RGB values from the database to sRGB.
-      xyz = geisler.raw2xyz(raw,f,T);
+      xyz = imgdb.geisler.raw2xyz(raw,f,T);
       
-      rgb = geisler.xyz2rgb(xyz);
+      rgb = imgdb.geisler.xyz2rgb(xyz);
     end
     
     function rgb = xyz2rgb(xyz)
