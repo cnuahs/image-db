@@ -4,7 +4,7 @@ classdef (Abstract) db
   % 2015-02-26 - Shaun L. Cloherty <s.cloherty@ieee.org>
   
   properties (GetAccess = public, SetAccess = protected)
-    path = ''; % path to the directory containing the images and metadata
+    path; % path(s) containing the images and metadata
 
     info; % info for each image in the database
   end
@@ -25,19 +25,26 @@ classdef (Abstract) db
   end
     
   methods
-    function db = db(pth) % constructor
-      if ~exist(pth,'dir')
-        error('Database not found at: %s.', pth);
+    function db = db(varargin) % constructor
+      % create empty database
+      db.path = {};
+      db.info = containers.Map('KeyType','char','ValueType','any');
+
+      if nargin < 1
+        return
       end
-    
-      db.path = pth;
-      
-      db.info = containers.Map('KeyType','double','ValueType','any');
+
+      % varargin contains one or more paths to add
+      for ii = 1:nargin
+        db = db.add(varargin{ii});
+      end
     end
-  end
+  end % methods
     
   methods (Abstract)
-    img = getImg(db,key,varargin)
+    db = add(db,pth); % add images in pth to the database
+    
+    img = getImg(db,key,varargin); % retrieve an image (by key) from disk
   end
   
 end

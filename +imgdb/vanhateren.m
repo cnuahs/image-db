@@ -9,24 +9,43 @@ classdef vanhateren < imgdb.db
     function db = vanhateren(pth,varargin) % constructor
       % call parent constructor
       db = db@imgdb.db(pth,varargin{:});
+    end
+    
+    function db = add(db,pth,varargin)
+      % add images in pth to the database
       
-      % get list of all image files in the database
-      files = rdir(fullfile(db.path,'**','imk*.im*')); % recursive!
+      if ~exist(pth,'dir')
+        warning('Directory %s not found.', pth);
+        return
+      end
+      
+      db.path = cat(2,db.path,pth); % append pth      
+      
+      % get list of all image files in pth
+      files = rdir(fullfile(pth,'**','imk*.im*')); % recursive!
 
       pat = ['.*', filesep, 'imk(?<imgId>\d+).(?<fmt>im.?)'];
       
-      finfo = arrayfun(@(x) regexp(x.name,pat,'tokens'), files);
-      imgIds = cellfun(@(x) str2num(x{1}), finfo, 'UniformOutput', 1);
-      imgTyp = cellfun(@(x) lower(x{2}), finfo, 'UniformOutput', 0); % 'iml' = linear, 'imc' = corrected
+      finfo = arrayfun(@(x) regexp(x.name,pat,'tokens'),files);
+%       imgIds = cellfun(@(x) str2num(x{1}),finfo,'UniformOutput',true);
+      imgIds = cellfun(@(x) x{1},finfo,'UniformOutput',false);
+      imgTyp = cellfun(@(x) lower(x{2}),finfo,'UniformOutput',false); % 'iml' = linear, 'imc' = corrected
 
-      [imgIds,~,imgIdx] = unique(imgIds); % sorted by image number/id
+      imgIds = unique(imgIds); % sorted by image number/id
       
       for idx = 1:length(imgIds)
-        key = imgIdx(idx);
+%         key = imgIdx(idx); % unique key in db.info()
+%         key = length(db.keys) + 1; % unique key in db.info()
+        key = imgIds{idx};
+        if db.info.isKey(key)
+          img = db.info(key); % <-- existing record
+        else
+          img = struct('key',key);
+        end
         
         fname = files(idx).name;
         
-        img = struct('key',key,imgTyp{idx},fname); % imgTyp is 'iml' or 'imc'
+        img.(imgTyp{idx}) = fname; % imgTyp is 'iml' or 'imc'
         
         db.info(key) = img;
       end
@@ -93,7 +112,8 @@ classdef vanhateren < imgdb.db
      
       % each row of meta contains the camera settings and/or offset for a
       % single image, indexed by image id
-      meta = [1:max(imgIds)]'; fnames = {};
+%       meta = [1:max(imgIds)]'; fnames = {};
+      meta = [1:numel(imgIds)]'; fnames = {}; % <-- FIXME: this is fragile!!
       
       % append camera settings if available
       if ~isempty(settings)
@@ -119,7 +139,7 @@ classdef vanhateren < imgdb.db
 %         end
 %         db.files(idx).key = ii; % this is redundant...
 
-        key = imgIdx(ii);
+        key = imgIds{ii};
         if ~db.info.isKey(key)
           warning('Cannot find image %i.', meta(ii));
           continue;
@@ -130,7 +150,6 @@ classdef vanhateren < imgdb.db
 
       % each entry in db.info is a struct with fields:
       %
-      %   .key - database key/image id (redundant?)
       %   .iml - full path to the .iml file
       %   .imk - full path to the .imk
       %   .meta - struct of image meta data
@@ -153,6 +172,11 @@ classdef vanhateren < imgdb.db
       %
       % The optional argument corrected is true or false. If false, or 
       % omitted, getImg() returns the linear image (i.e., corrected = false).
+      if iscell(key)
+        assert(numel(key) == 1,'Retrieving multiple images is not currently supported.');
+
+        key = key{1};
+      end
       
       if ~db.info.isKey(key)
         img = [];
@@ -164,8 +188,9 @@ classdef vanhateren < imgdb.db
         type = 'imc'; % corrected
       end
       
-      for ii = 1:length(key)
-        fname = db.info(key(ii)).(type);
+%       for ii = 1:length(key)
+      ii = 1;
+        fname = db.info(key{ii}).(type);
         
 %         if isempty(fname)
 %           continue
@@ -179,7 +204,7 @@ classdef vanhateren < imgdb.db
         catch
           warning('Failed to read %s.',fname);
         end
-      end
+%       end
       
       if numel(img) == 1
         img = cell2mat(img);

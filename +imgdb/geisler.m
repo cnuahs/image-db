@@ -10,27 +10,41 @@ classdef geisler < imgdb.db
   end
   
   methods
-    function db = geisler(pth,varargin) % constructor
+    function db = geisler(varargin) % constructor
       % call parent constructor
-      db = db@imgdb.db(pth,varargin{:});
-            
-      % get list of all image (.ppm - portable pixmap) files in the database
-      files = rdir(fullfile(db.path,'**','*.ppm')); % recursive!
+      db = db@imgdb.db(varargin{:});
+    end
+
+    function db = add(db,pth,varargin)
+      % add images in pth to the database
+      
+      if ~exist(pth,'dir')
+        warning('Directory %s not found.', pth);
+        return
+      end
+      
+      db.path = cat(2,db.path,pth); % append pth
+      
+      % get list of all image (.ppm - portable pixmap) files in pth
+      files = rdir(fullfile(pth,'**','*.ppm')); % recursive!
 
       [~,imgIds,~] = arrayfun(@(x) fileparts(x.name),files,'UniformOutput',false);
 
       [imgIds,~,imgIdx] = unique(imgIds); % sorted by image number/id
       
       for ii = 1:length(imgIds)
-        key = imgIdx(ii); % unique key in db.info()
+        key = imgIds{ii}; % unique key in db.info()
         
-        fname = files(ii).name; % full path to the .ppm file
-
-        img = struct('key',key,'ppm',fname,'meta',struct());
+        if db.info.isKey(key)
+          img = db.info(key); % <-- existing record
+        else
+          img = struct('key',key,'meta',struct());
+        end
+        
+        img.ppm = files(ii).name; % full path to the .ppm file
         
         % fetch the image meta data (if available)
-        [~,name,ext] = fileparts(fname);
-        exif = rdir(fullfile(pth,'**',[name, '.exif'])); % recursive!
+        exif = rdir(fullfile(pth,'**',[key, '.exif'])); % recursive!
           
         if ~isempty(exif)          
           fid = fopen(exif.name,'r');
@@ -56,8 +70,8 @@ classdef geisler < imgdb.db
       
       % each entry in db.info is a struct with fields:
       %
-      %   .key - database key/image id (redundant?)
       %   .ppm - full path to the .ppm file
+      %   .exif - full path to the .exif file (if available)
       %   .meta - struct of image meta data
       %
       % the .meta sub-struct has many many fields. The ones you probably
@@ -69,7 +83,11 @@ classdef geisler < imgdb.db
     
     function img = getImg(db,key,varargin)
       % Load image(s) for the given database key(s).
-      img = arrayfun(@(x) imgdb.geisler.load(db.info(x),varargin{:}),key,'UniformOutput',false);
+      if ~iscell(key)
+        key = {key};
+      end
+      
+      img = cellfun(@(x) imgdb.geisler.load(db.info(x),varargin{:}),key,'UniformOutput',false);
       
       if numel(img) == 1
         img = cell2mat(img);

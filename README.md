@@ -8,13 +8,13 @@ Example usage, assuming you have downloaded one of Bill Geisler's natural scene 
 ```
 % create the database (i.e., index the files on disk,
 % parse the .exif files etc.)
-db = imgdb.geisler('~/path/to/image/collection');
+db = imgdb.geisler('~/path/to/image/set1');
 
 % select a random image/key from the dataset
-key = randsample(db.keys,1);
+key = cell2mat(randsample(db.keys,1));
 
 % retrieve the image
-img = db.getImg(key);
+img = db.getImg(key{1});
 
 % show it...
 figure; imshow(img);
@@ -41,7 +41,18 @@ figure; imshow(rgb);
 ```
 
 # Notes
-To make use of Bill Geisler's natural scene collections, download both the image files *and* the EXIF meta data. These are available in separate .zip files for each collection/image set on the site linked below. Unzip both files in a directory of your choice and pass that path to the @geisler database class constructor ('~/path/to/image/collection' in the example above).
+1. You can add multiple paths/directories to the database either by passing them to the constructor:
+```
+db = imgdb.geisler('~/path/to/image/set1','~/path/to/image/set2');
+```
+or explicitly calling the .add() method:
+```
+db = imgdb.geisler('~/path/to/image/set1');
+db = db.add('~/path/to/image/set2');
+```
+2. There is currently nothing stopping you from adding the same path to the database multiple times. If a record already exists in the database for a given image/key (e.g., because you've already added a given path), it will be silently overwritten.
+
+3. To make use of Bill Geisler's natural scene collections, download a set of image files *and* the corresponding EXIF meta data. These are available in separate .zip files for each collection/image set on the site linked below. The meta data is required for the colour space conversions to work. Unzip both files in a directory of your choice and add that path to the @geisler database, either via the class constructor or using the .add() method.
 
 # Links
 1. The van Hateren natural image dataset is available [here](http://bethgelab.org/datasets/vanhateren/).
