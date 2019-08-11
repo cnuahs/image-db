@@ -1,4 +1,4 @@
-# img-db
+# image-db
 
 Matlab wrappers for various image databases.
 
