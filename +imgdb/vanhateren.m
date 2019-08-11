@@ -31,12 +31,12 @@ classdef vanhateren < imgdb.db
       imgIds = cellfun(@(x) x{1},finfo,'UniformOutput',false);
       imgTyp = cellfun(@(x) lower(x{2}),finfo,'UniformOutput',false); % 'iml' = linear, 'imc' = corrected
 
-      imgIds = unique(imgIds); % sorted by image number/id
+      [imgIds,~,imgIdx] = unique(imgIds); % sorted by image number/id
       
-      for idx = 1:length(imgIds)
+      for idx = 1:length(imgIdx)
 %         key = imgIdx(idx); % unique key in db.info()
 %         key = length(db.keys) + 1; % unique key in db.info()
-        key = imgIds{idx};
+        key = imgIds{imgIdx(idx)};
         if db.info.isKey(key)
           img = db.info(key); % <-- existing record
         else
@@ -62,15 +62,22 @@ classdef vanhateren < imgdb.db
       fnames = {}; % field names of the meta structure
       settings = [];
       
-      files = rdir(fullfile(db.path,'**','camerasettings.txt')); % recursive!
+      files = rdir(fullfile(pth,'**','camerasettings.txt')); % recursive!
       if ~isempty(files)
         if numel(files) > 1
           error('Multiple camerasettings.txt files found!');
         end
-        fdata = importdata(files.name);
-        if ~strcmp(fdata.textdata{1},'CAMERA SETTINGS')
-          error('Error reading camerasettings.txt');
-        end
+
+% this use of importdata() used to work but now seems to crash matlab ... wah!?
+%         fdata = importdata(files.name);
+%         if ~strcmp(fdata.textdata{1},'CAMERA SETTINGS')
+%           error('Error reading camerasettings.txt');
+%         end
+
+% use textscan instead...
+        fid = fopen(files.name,'r');
+        fdata.data = cell2mat(textscan(fid,'%f\t%f\t%f\t%f\t%f','Headerlines',3));
+        fclose(fid);        
       
         % colmns in settings are as follows:
         %   1: image number (imgId),
@@ -87,16 +94,20 @@ classdef vanhateren < imgdb.db
       % pixel value offsets
       offsets = [];
       
-      files = rdir(fullfile(db.path,'**','imcoffsetlist.txt')); % recursive!
+      files = rdir(fullfile(pth,'**','imcoffsetlist.txt')); % recursive!
       if ~isempty(files)
         if numel(files) > 1
           error('Multiple imcoffsetlist.txt files found!');
         end
-        fdata = importdata(files.name);
-        if ~strcmp(fdata.textdata{1},'IMC OFFSET LIST')
-          error('Error reading imcoffsetlist.txt');
-        end
-      
+        
+%         fdata = importdata(files.name);
+%         if ~strcmp(fdata.textdata{1},'IMC OFFSET LIST')
+%           error('Error reading imcoffsetlist.txt');
+%         end
+        fid = fopen(files.name,'r');
+        fdata.data = cell2mat(textscan(fid,'%f\t%f','Headerlines',5));
+        fclose(fid);
+        
         % columns in offsets are as follows:
         %   1: image number (imgId)
         %   2: pixel value offset
@@ -145,7 +156,10 @@ classdef vanhateren < imgdb.db
           continue;
         end
 
-        db.info(key).meta = cell2struct(arrayfun(@(x) x, meta(ii,2:end),'UniformOutput',0),fnames,2);
+        img = db.info(key);
+        img.meta = cell2struct(arrayfun(@(x) x, meta(ii,2:end),'UniformOutput',0),fnames,2);
+        
+        db.info(key) = img;
       end
 
       % each entry in db.info is a struct with fields:
@@ -172,45 +186,56 @@ classdef vanhateren < imgdb.db
       %
       % The optional argument corrected is true or false. If false, or 
       % omitted, getImg() returns the linear image (i.e., corrected = false).
-      if iscell(key)
-        assert(numel(key) == 1,'Retrieving multiple images is not currently supported.');
-
-        key = key{1};
+      if ~iscell(key)
+        key = {key};
       end
       
-      if ~db.info.isKey(key)
-        img = [];
-        return
+      img = cellfun(@(x) imgdb.vanhateren.load(db.info(x),varargin{:}),key,'UniformOutput',false);
+      
+      if numel(img) == 1
+        img = cell2mat(img);
       end
-
+    end
+      
+  end % methods
+  
+  methods (Static)
+    function img = load(rec,varargin)
+      % Load image(s) for the given database record(s).
+      %
+      %   img = vanhateren.load(rec[,...])
+      %
+      % optional arguments:
+      %
+      %   corrected - true = load the corrected image, false = load the linear image (default)
+      
       type = 'iml'; % default: linear
-      if (nargin > 2) & varargin{1}
+      if (nargin > 1) && varargin{1}
         type = 'imc'; % corrected
       end
       
-%       for ii = 1:length(key)
-      ii = 1;
-        fname = db.info(key{ii}).(type);
+      for ii = 1:length(rec)
+        fname = rec(ii).(type);
         
-%         if isempty(fname)
-%           continue
-%         end
+        if isempty(fname)
+          continue
+        end
 
         try
           fid = fopen(fname,'rb','ieee-be');
           w = 1536; h = 1024;
-          img{ii} = fread(fid,[w,h],'uint16')';
+          img{ii} = double(fread(fid,[w,h],'uint16'))'./(2^12-1); % images are "effectively" 12-bit?
           fclose(fid);
         catch
           warning('Failed to read %s.',fname);
         end
-%       end
+      end
       
       if numel(img) == 1
         img = cell2mat(img);
       end
     end
     
-  end % methods
+  end % static methods
   
 end % classdef
