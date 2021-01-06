@@ -30,7 +30,7 @@ classdef geisler < imgdb.db
 
       [~,imgIds,~] = arrayfun(@(x) fileparts(x.name),files,'UniformOutput',false);
 
-      [imgIds,~,imgIdx] = unique(imgIds); % sorted by image number/id
+      [imgIds,imgIdx] = unique(imgIds); % sorted by image number/id
       
       for ii = 1:length(imgIds)
         key = imgIds{ii}; % unique key in db.info()
@@ -41,7 +41,7 @@ classdef geisler < imgdb.db
           img = struct('key',key,'meta',struct());
         end
         
-        img.ppm = files(ii).name; % full path to the .ppm file
+        img.ppm = files(imgIdx(ii)).name; % full path to the .ppm file
         
         % fetch the image meta data (if available)
         exif = rdir(fullfile(pth,'**',[key, '.exif'])); % recursive!
